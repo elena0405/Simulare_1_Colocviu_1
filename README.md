@@ -1,1 +1,1 @@
-# Simulare_1_Colocviu_1
+Ionescu Elena 342C1
