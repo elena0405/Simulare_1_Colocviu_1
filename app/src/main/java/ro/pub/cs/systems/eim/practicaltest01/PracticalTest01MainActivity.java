@@ -3,7 +3,10 @@ package ro.pub.cs.systems.eim.practicaltest01;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.provider.SyncStateContract;
 import android.util.Log;
@@ -14,12 +17,16 @@ import android.widget.Toast;
 
 public class PracticalTest01MainActivity extends AppCompatActivity {
 
+    Object serviceStatus = Constants.SERVICE_STOPPED;
     private EditText first_edit_text;
     private EditText second_edit_text;
     private Button press_me_button;
     private Button press_me_too_button;
     private Button secondary_activity_button;
     private ButtonClickListener buttonClickListener = new ButtonClickListener();
+
+    private IntentFilter intentFilter = new IntentFilter();
+    private MessageBroadcastReceiver messageBroadcastReceiver = new MessageBroadcastReceiver();
 
     private class ButtonClickListener implements View.OnClickListener {
 
@@ -44,6 +51,15 @@ public class PracticalTest01MainActivity extends AppCompatActivity {
 
                 intent.putExtra("number_count_edit_text", number);
                 startActivityForResult(intent, 2017);
+            }
+
+            if (first_number_of_counts + second_number_of_counts > Constants.NUMBER_OF_CLICKS_THRESHOLD
+                && serviceStatus == Constants.SERVICE_STOPPED) {
+                Intent intent = new Intent(getApplicationContext(), PracticalTest01Service.class);
+                intent.putExtra("first_edit_text", first_number_of_counts);
+                intent.putExtra("second_edit_text", second_number_of_counts);
+                getApplicationContext().startService(intent);
+                serviceStatus = Constants.SERVICE_STARTED;
             }
         }
     }
@@ -76,6 +92,13 @@ public class PracticalTest01MainActivity extends AppCompatActivity {
         }
     }
 
+    private class MessageBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d("Broadcast receiver", intent.getStringExtra(Constants.BROADCAST_RECEIVER_EXTRA));
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -94,6 +117,10 @@ public class PracticalTest01MainActivity extends AppCompatActivity {
         press_me_button.setOnClickListener(buttonClickListener);
         press_me_too_button.setOnClickListener(buttonClickListener);
         secondary_activity_button.setOnClickListener(buttonClickListener);
+
+        for (int index = 0; index < Constants.actionTypes.length; index++) {
+            intentFilter.addAction(Constants.actionTypes[index]);
+        }
     }
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
@@ -107,6 +134,7 @@ public class PracticalTest01MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        registerReceiver(messageBroadcastReceiver, intentFilter);
 
         Log.d("practicaltest01", "onResume() method was invoked!" );
     }
@@ -127,6 +155,7 @@ public class PracticalTest01MainActivity extends AppCompatActivity {
 
     @Override
     protected void onPause() {
+        unregisterReceiver(messageBroadcastReceiver);
         super.onPause();
 
         Log.d("practicaltest01", "onPause() method was invoked!" );
@@ -134,6 +163,8 @@ public class PracticalTest01MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        Intent intent = new Intent(this, PracticalTest01Service.class);
+        stopService(intent);
         super.onDestroy();
 
         Log.d("practicaltest01", "onDestroy() method was invoked!" );
